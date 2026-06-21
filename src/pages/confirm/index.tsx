@@ -1,56 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Input, Textarea, ScrollView } from '@tarojs/components';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, ScrollView, Button, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import StatusBadge from '@/components/StatusBadge';
-import { Customer, ProjectTemplate } from '@/types';
-import { getCustomerById, getTodayCustomers } from '@/data/customers';
+import { ProjectTemplate } from '@/types';
+import { useAppStore } from '@/store';
 import { getTemplateById } from '@/data/templates';
 import { showToast } from '@/utils';
 import styles from './index.module.scss';
 
 const ConfirmPage: React.FC = () => {
-  const [customer, setCustomer] = useState<Customer | null>(null);
+  const currentCustomerId = useAppStore(state => state.currentCustomerId);
+  const currentShootSession = useAppStore(state => state.currentShootSession);
+  const getCurrentCustomer = useAppStore(state => state.getCurrentCustomer);
+  const updateShootSession = useAppStore(state => state.updateShootSession);
+  const selectCustomer = useAppStore(state => state.selectCustomer);
+  const findCustomerByNo = useAppStore(state => state.findCustomerByNo);
+  const customers = useAppStore(state => state.customers);
+  
+  const customer = getCurrentCustomer();
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
   const [isCaseAuthorized, setIsCaseAuthorized] = useState(false);
   const [remark, setRemark] = useState('');
 
   useEffect(() => {
-    const customers = getTodayCustomers();
-    const shootingCustomer = customers.find(c => c.status === 'shooting') || customers.find(c => c.status === 'waiting');
-    if (shootingCustomer) {
-      loadCustomerData(shootingCustomer.id);
-    }
-  }, []);
-
-  const loadCustomerData = (customerId: string) => {
-    try {
-      const customerData = getCustomerById(customerId);
-      if (customerData) {
-        setCustomer(customerData);
-        setIsCaseAuthorized(customerData.isCaseAuthorized);
-        
-        const templateData = customerData.projectIds
-          .map(id => getTemplateById(id))
-          .filter(Boolean) as ProjectTemplate[];
-        setTemplates(templateData);
+    if (customer) {
+      const templateData = customer.projectIds
+        .map(id => getTemplateById(id))
+        .filter(Boolean) as ProjectTemplate[];
+      setTemplates(templateData);
+      
+      if (currentShootSession) {
+        setIsCaseAuthorized(currentShootSession.isCaseAuthorized);
+        setRemark(currentShootSession.remark);
+      } else {
+        setIsCaseAuthorized(customer.isCaseAuthorized);
+        setRemark('');
       }
-    } catch (error) {
-      console.error('[Confirm] 加载客户数据失败:', error);
     }
-  };
+  }, [customer, currentShootSession]);
 
-  const handleScan = () => {
+  const handleScan = useCallback(() => {
     Taro.scanCode({
       success: (res) => {
         console.log('[Confirm] 扫码结果:', res.result);
-        const customers = getTodayCustomers();
-        const found = customers.find(c => c.id === res.result || c.appointmentNo === res.result);
+        const code = res.result.trim();
+        
+        const found = findCustomerByNo(code);
+        
         if (found) {
-          loadCustomerData(found.id);
+          console.log('[Confirm] 找到客户:', found.name);
+          selectCustomer(found.id);
           showToast('客户身份核验成功', 'success');
         } else {
-          showToast('未找到对应客户', 'error');
+          console.warn('[Confirm] 未找到对应客户:', code);
+          showToast('未找到对应客户，请核对预约号', 'error');
         }
       },
       fail: (error) => {
@@ -58,30 +62,50 @@ const ConfirmPage: React.FC = () => {
         showToast('扫码失败，请重试', 'error');
       }
     });
-  };
+  }, [findCustomerByNo, selectCustomer]);
 
-  const handleProjectClick = (template: ProjectTemplate) => {
+  const handleProjectClick = useCallback((template: ProjectTemplate) => {
     Taro.navigateTo({
       url: '/pages/template-detail?id=' + template.id
     });
-  };
+  }, []);
 
-  const handleToggleAuth = () => {
-    setIsCaseAuthorized(!isCaseAuthorized);
-  };
+  const handleToggleAuth = useCallback(() => {
+    const newValue = !isCaseAuthorized;
+    setIsCaseAuthorized(newValue);
+    
+    if (currentShootSession) {
+      updateShootSession({ isCaseAuthorized: newValue });
+    }
+  }, [isCaseAuthorized, currentShootSession, updateShootSession]);
 
-  const handleStartShoot = () => {
+  const handleRemarkChange = useCallback((value: string) => {
+    setRemark(value);
+    
+    if (currentShootSession) {
+      updateShootSession({ remark: value });
+    }
+  }, [currentShootSession, updateShootSession]);
+
+  const handleStartShoot = useCallback(() => {
     if (!customer) return;
+    
+    if (!currentShootSession) {
+      showToast('请先选择项目开始拍摄', 'error');
+      return;
+    }
     
     console.log('[Confirm] 开始拍摄:', customer.name);
     showToast('进入拍摄流程', 'success');
     
     Taro.navigateTo({
-      url: '/pages/shooting/index?id=' + customer.id
+      url: '/pages/shooting/index'
     });
-  };
+  }, [customer, currentShootSession]);
 
   if (!customer) {
+    const firstCustomer = customers.find(c => c.status !== 'cancelled');
+    
     return (
       <View className={styles.pageContainer}>
         <View className={styles.emptyCustomer}>
@@ -90,6 +114,13 @@ const ConfirmPage: React.FC = () => {
           <Button className={styles.scanBtn} onClick={handleScan}>
             扫码核对客户
           </Button>
+          {firstCustomer && (
+            <View style={{ marginTop: '32rpx' }}>
+              <Text style={{ fontSize: '24rpx', color: '#86909C' }}>
+                或从今日拍摄列表选择客户
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -192,10 +223,10 @@ const ConfirmPage: React.FC = () => {
             className={styles.remarkInput}
             placeholder='如有特殊情况请备注给医生（选填）'
             value={remark}
-            onInput={(e) => setRemark(e.detail.value)}
+            onInput={(e) => handleRemarkChange(e.detail.value)}
             maxlength={200}
           />
-          <Text className={styles.remarkTip}>已输入 {remark.length}/200 字</Text>
+          <Text className={styles.remarkTip}>已输入 {remark.length}/200 字 · 备注将随照片一起提交给医生</Text>
         </View>
       </ScrollView>
 

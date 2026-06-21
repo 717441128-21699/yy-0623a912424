@@ -1,47 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
-import { UploadRecord, PhotoRecord } from '@/types';
-import { getUploadRecords, getOfflinePhotos } from '@/data/records';
+import { UploadRecord } from '@/types';
+import { useAppStore } from '@/store';
 import { formatDateTime, showToast } from '@/utils';
 import styles from './index.module.scss';
 
 type FilterType = 'all' | 'success' | 'pending' | 'failed' | 'offline';
 
 const RecordsPage: React.FC = () => {
-  const [records, setRecords] = useState<UploadRecord[]>([]);
-  const [offlinePhotos, setOfflinePhotos] = useState<PhotoRecord[]>([]);
+  const uploadRecords = useAppStore(state => state.uploadRecords);
+  const offlinePhotos = useAppStore(state => state.offlinePhotos);
+  const retryUpload = useAppStore(state => state.retryUpload);
+  const retryAllOffline = useAppStore(state => state.retryAllOffline);
+  
   const [filter, setFilter] = useState<FilterType>('all');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
-    try {
-      const uploadRecords = getUploadRecords();
-      setRecords(uploadRecords);
-      
-      const offline = getOfflinePhotos();
-      setOfflinePhotos(offline);
-    } catch (error) {
-      console.error('[Records] 加载上传记录失败:', error);
-    }
-  };
-
-  const filteredRecords = records.filter(r => {
+  const filteredRecords = uploadRecords.filter(r => {
     if (filter === 'all') return true;
     if (filter === 'offline') return r.isOffline;
     return r.status === filter;
   });
 
   const stats = {
-    total: records.length,
-    success: records.filter(r => r.status === 'success').length,
-    pending: records.filter(r => r.status === 'pending' || r.status === 'partial').length,
-    failed: records.filter(r => r.status === 'failed').length,
-    offline: records.filter(r => r.isOffline).length
+    total: uploadRecords.length,
+    success: uploadRecords.filter(r => r.status === 'success').length,
+    pending: uploadRecords.filter(r => r.status === 'pending' || r.status === 'partial').length,
+    failed: uploadRecords.filter(r => r.status === 'failed').length,
+    offline: uploadRecords.filter(r => r.isOffline).length
   };
 
   const filters: { key: FilterType; label: string }[] = [
@@ -62,23 +49,39 @@ const RecordsPage: React.FC = () => {
     return map[status] || status;
   };
 
-  const handleRecordClick = (record: UploadRecord) => {
+  const handleRecordClick = useCallback((record: UploadRecord) => {
     console.log('[Records] 点击记录:', record.customerName);
-  };
+  }, []);
 
-  const handleRetry = (record: UploadRecord) => {
+  const handleRetry = useCallback((record: UploadRecord) => {
     console.log('[Records] 重试上传:', record.customerName);
+    retryUpload(record.id);
     showToast('正在重新上传...', 'none');
-  };
+    
+    setTimeout(() => {
+      showToast('上传成功', 'success');
+    }, 1500);
+  }, [retryUpload]);
 
-  const handleRetryAllOffline = () => {
+  const handleRetryAllOffline = useCallback(() => {
     console.log('[Records] 全部重试离线照片');
+    retryAllOffline();
     showToast('正在批量上传...', 'none');
-  };
+    
+    setTimeout(() => {
+      showToast('全部上传成功', 'success');
+    }, 2000);
+  }, [retryAllOffline]);
 
-  const handleViewDetail = (record: UploadRecord) => {
+  const handleViewDetail = useCallback((record: UploadRecord) => {
     console.log('[Records] 查看详情:', record.customerName);
-  };
+    Taro.showModal({
+      title: record.projectName,
+      content: `客户：${record.customerName}\n照片数量：${record.photoCount}张\n上传时间：${formatDateTime(record.uploadTime)}\n护士：${record.nurseName}${record.remark ? '\n备注：' + record.remark : ''}`,
+      showCancel: false,
+      confirmText: '知道了'
+    });
+  }, []);
 
   return (
     <View className={styles.pageContainer}>
@@ -176,7 +179,7 @@ const RecordsPage: React.FC = () => {
               <View className={styles.recordFooter}>
                 <Text className={styles.uploadTime}>{formatDateTime(record.uploadTime)}</Text>
                 <View style={{ display: 'flex', gap: '16rpx' }}>
-                  {(record.status === 'failed' || record.status === 'partial') && (
+                  {(record.status === 'failed' || record.status === 'partial' || record.isOffline) && (
                     <Button
                       className={classnames(styles.actionBtn, styles.retry)}
                       onClick={(e) => {

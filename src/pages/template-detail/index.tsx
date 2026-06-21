@@ -1,29 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { ProjectTemplate } from '@/types';
-import { getTemplateById } from '@/data/templates';
+import { View, Text, ScrollView } from '@tarojs/components';
+import { useRouter } from '@tarojs/taro';
+import { useAppStore } from '@/store';
 import styles from './index.module.scss';
 
 const TemplateDetailPage: React.FC = () => {
-  const [template, setTemplate] = useState<ProjectTemplate | null>(null);
+  const templates = useAppStore(state => state.templates);
+  const router = useRouter();
+  const [templateId, setTemplateId] = useState<string>('');
 
   useEffect(() => {
-    const pages = Taro.getCurrentPages();
-    const currentPage = pages[pages.length - 1];
-    const options = (currentPage as any).options || {};
-    
-    const templateId = options.id || 'p001';
-    const data = getTemplateById(templateId);
-    if (data) {
-      setTemplate(data);
+    const id = router.params?.id || '';
+    if (id) {
+      setTemplateId(id);
+      console.log('[TemplateDetail] 模板ID:', id);
     }
-  }, []);
+  }, [router.params]);
+
+  const template = templates.find(t => t.id === templateId);
 
   if (!template) {
     return (
       <View className={styles.pageContainer}>
-        <Text>加载中...</Text>
+        <View style={{ padding: '100rpx 32rpx', textAlign: 'center' }}>
+          <Text style={{ fontSize: '28rpx', color: '#86909C' }}>
+            模板加载中...
+          </Text>
+        </View>
       </View>
     );
   }
@@ -83,16 +86,22 @@ const TemplateDetailPage: React.FC = () => {
       </View>
 
       <View className={styles.section}>
-        <Text className={styles.sectionTitle}>拍摄角度 ({requiredCount}个必拍)</Text>
+        <Text className={styles.sectionTitle}>
+          拍摄角度列表（必拍 {requiredCount} 个）
+        </Text>
         <View className={styles.angleList}>
           {template.angles.map((angle, index) => (
             <View key={angle.id} className={styles.angleItem}>
               <View className={styles.anglePreview}>
-                <Text>{getDirectionIcon(angle.direction)}</Text>
+                <Text style={{ fontSize: '40rpx' }}>
+                  {getDirectionIcon(angle.direction)}
+                </Text>
               </View>
               <View className={styles.angleInfo}>
-                <View className={styles.angleName}>
-                  <Text>{index + 1}. {angle.name}</Text>
+                <View style={{ display: 'flex', alignItems: 'center', gap: '12rpx' }}>
+                  <Text className={styles.angleName}>
+                    {index + 1}. {angle.name}
+                  </Text>
                   {angle.isRequired ? (
                     <View className={styles.requiredBadge}>
                       <Text>必拍</Text>
@@ -117,7 +126,7 @@ const TemplateDetailPage: React.FC = () => {
         <Text className={styles.sectionTitle}>拍摄注意事项</Text>
         <View className={styles.tipsList}>
           {template.tips.map((tip, index) => (
-            <View key={index}>
+            <View key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12rpx' }}>
               <Text className={styles.tipIcon}>✓</Text>
               <Text>{tip}</Text>
             </View>

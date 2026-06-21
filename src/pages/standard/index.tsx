@@ -1,31 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Input } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import TemplateCard from '@/components/TemplateCard';
 import { ProjectTemplate } from '@/types';
-import { getAllTemplates } from '@/data/templates';
+import { useAppStore } from '@/store';
 import styles from './index.module.scss';
 
 type CategoryType = 'all' | '面部' | '身体';
 
 const StandardPage: React.FC = () => {
-  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+  const templates = useAppStore(state => state.templates);
   const [category, setCategory] = useState<CategoryType>('all');
   const [searchKeyword, setSearchKeyword] = useState('');
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
-    try {
-      const data = getAllTemplates();
-      setTemplates(data);
-    } catch (error) {
-      console.error('[Standard] 加载模板数据失败:', error);
-    }
-  };
 
   const filteredTemplates = templates.filter(t => {
     const matchCategory = category === 'all' || t.category === category;
@@ -46,10 +33,6 @@ const StandardPage: React.FC = () => {
     Taro.navigateTo({
       url: '/pages/template-detail?id=' + template.id
     });
-  };
-
-  const handleTemplateClick = (template: ProjectTemplate) => {
-    handleViewTemplate(template);
   };
 
   return (
@@ -94,7 +77,7 @@ const StandardPage: React.FC = () => {
             <TemplateCard
               key={template.id}
               template={template}
-              onClick={handleTemplateClick}
+              onClick={handleViewTemplate}
               onView={handleViewTemplate}
             />
           ))

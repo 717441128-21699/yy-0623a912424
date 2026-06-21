@@ -1,38 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import { SupplementTask } from '@/types';
-import { getSupplementTasks } from '@/data/records';
-import { getPriorityText, getPriorityColor, formatDate, showToast } from '@/utils';
+import { useAppStore } from '@/store';
+import { formatDate, showToast, getPriorityText } from '@/utils';
 import styles from './index.module.scss';
 
 type FilterType = 'all' | 'high' | 'medium' | 'low' | 'completed';
 
 const SupplementPage: React.FC = () => {
-  const [tasks, setTasks] = useState<SupplementTask[]>([]);
+  const supplementTasks = useAppStore(state => state.supplementTasks);
+  const selectCustomer = useAppStore(state => state.selectCustomer);
   const [filter, setFilter] = useState<FilterType>('all');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
-    try {
-      const data = getSupplementTasks();
-      setTasks(data);
-    } catch (error) {
-      console.error('[Supplement] 加载待补照片数据失败:', error);
-    }
-  };
-
-  const filteredTasks = tasks.filter(t => {
+  const filteredTasks = supplementTasks.filter(t => {
     if (filter === 'all') return !t.isCompleted;
     if (filter === 'completed') return t.isCompleted;
     return t.priority === filter && !t.isCompleted;
   });
 
-  const pendingTasks = tasks.filter(t => !t.isCompleted);
+  const pendingTasks = supplementTasks.filter(t => !t.isCompleted);
   const highPriorityCount = pendingTasks.filter(t => t.priority === 'high').length;
 
   const filters: { key: FilterType; label: string }[] = [
@@ -60,22 +48,35 @@ const SupplementPage: React.FC = () => {
     return diffDays <= 1;
   };
 
-  const handleTaskClick = (task: SupplementTask) => {
+  const handleTaskClick = useCallback((task: SupplementTask) => {
     console.log('[Supplement] 点击待补任务:', task.customerName);
-  };
+  }, []);
 
-  const handleHandleTask = (task: SupplementTask) => {
+  const handleHandleTask = useCallback((task: SupplementTask) => {
     console.log('[Supplement] 处理待补任务:', task.customerName);
+    selectCustomer(task.customerId);
     showToast('已跳转到拍摄页面', 'success');
     Taro.navigateTo({
-      url: '/pages/shooting/index?id=' + task.customerId + '&projectId=' + task.projectId
+      url: '/pages/shooting/index'
     });
-  };
+  }, [selectCustomer]);
 
-  const handleHandover = () => {
+  const handleHandover = useCallback(() => {
     console.log('[Supplement] 交班汇总');
-    showToast('交班汇总已生成', 'success');
-  };
+    const summary = `
+今日待补照片汇总：
+- 待补任务：${pendingTasks.length}个
+- 高优先级：${highPriorityCount}个
+- 缺拍总数：${pendingTasks.reduce((sum, t) => sum + t.missingAngles.length, 0)}张
+    `.trim();
+    
+    Taro.showModal({
+      title: '交班汇总',
+      content: summary,
+      showCancel: false,
+      confirmText: '知道了'
+    });
+  }, [pendingTasks, highPriorityCount]);
 
   return (
     <View className={styles.pageContainer}>

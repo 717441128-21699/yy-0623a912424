@@ -1,48 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Button } from '@tarojs/components';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import CustomerCard from '@/components/CustomerCard';
 import { Customer } from '@/types';
-import { getTodayCustomers } from '@/data/customers';
+import { useAppStore } from '@/store';
 import { formatDate, showToast } from '@/utils';
 import styles from './index.module.scss';
 
 type FilterType = 'all' | 'waiting' | 'shooting' | 'completed';
 
 const TodayPage: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
-    setLoading(true);
-    try {
-      const data = getTodayCustomers();
-      setCustomers(data);
-    } catch (error) {
-      console.error('[Today] 加载数据失败:', error);
-      showToast('加载失败，请重试', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onPullDownRefresh = useCallback(() => {
-    loadData();
-    Taro.stopPullDownRefresh();
-  }, []);
-
-  useEffect(() => {
-    Taro.eventCenter.on('pulldownrefresh', onPullDownRefresh);
-    return () => {
-      Taro.eventCenter.off('pulldownrefresh', onPullDownRefresh);
-    };
-  }, [onPullDownRefresh]);
+  
+  const customers = useAppStore(state => state.customers);
+  const selectCustomer = useAppStore(state => state.selectCustomer);
+  const findCustomerByNo = useAppStore(state => state.findCustomerByNo);
+  const currentCustomerId = useAppStore(state => state.currentCustomerId);
 
   const filteredCustomers = customers.filter(c => {
     if (filter === 'all') return c.status !== 'cancelled';
@@ -63,32 +37,58 @@ const TodayPage: React.FC = () => {
     { key: 'completed', label: '已完成' }
   ];
 
-  const handleScan = () => {
+  const handleScan = useCallback(() => {
     Taro.scanCode({
       success: (res) => {
         console.log('[Today] 扫码结果:', res.result);
-        showToast('客户身份核验成功', 'success');
+        const code = res.result.trim();
+        
+        const found = findCustomerByNo(code);
+        
+        if (found) {
+          console.log('[Today] 找到客户:', found.name);
+          selectCustomer(found.id);
+          showToast('客户身份核验成功', 'success');
+          
+          setTimeout(() => {
+            Taro.switchTab({
+              url: '/pages/confirm/index'
+            });
+          }, 800);
+        } else {
+          console.warn('[Today] 未找到对应客户:', code);
+          showToast('未找到对应客户，请核对预约号', 'error');
+        }
       },
       fail: (error) => {
         console.error('[Today] 扫码失败:', error);
         showToast('扫码失败，请重试', 'error');
       }
     });
-  };
+  }, [findCustomerByNo, selectCustomer]);
 
-  const handleCustomerClick = (customer: Customer) => {
+  const handleCustomerClick = useCallback((customer: Customer) => {
     console.log('[Today] 点击客户:', customer.name);
+    selectCustomer(customer.id);
     Taro.navigateTo({
-      url: '/pages/shooting/index?id=' + customer.id
+      url: '/pages/template-detail?id=' + customer.projectIds[0]
     });
-  };
+  }, [selectCustomer]);
 
-  const handleStartShoot = (customer: Customer) => {
+  const handleStartShoot = useCallback((customer: Customer) => {
     console.log('[Today] 开始拍摄:', customer.name);
+    selectCustomer(customer.id);
     Taro.switchTab({
       url: '/pages/confirm/index'
     });
-  };
+  }, [selectCustomer]);
+
+  const handleHandover = useCallback(() => {
+    console.log('[Today] 交班汇总');
+    Taro.switchTab({
+      url: '/pages/supplement/index'
+    });
+  }, []);
 
   const today = new Date();
 
@@ -111,7 +111,7 @@ const TodayPage: React.FC = () => {
           <View className={styles.quickAction} onClick={handleScan}>
             <Text>扫码核对</Text>
           </View>
-          <View className={styles.quickAction}>
+          <View className={styles.quickAction} onClick={handleHandover}>
             <Text>交班汇总</Text>
           </View>
         </View>
