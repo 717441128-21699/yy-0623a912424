@@ -34,6 +34,7 @@ interface AppState {
   currentShootSession: ShootSession | null;
   
   isDataLoaded: boolean;
+  isInitialSeedDone: boolean;
   
   setCustomers: (customers: Customer[]) => void;
   setTemplates: (templates: ProjectTemplate[]) => void;
@@ -78,6 +79,7 @@ export const useAppStore = create<AppState>()(
       currentShootSession: null,
       
       isDataLoaded: false,
+      isInitialSeedDone: false,
       
       setCustomers: (customers) => set({ customers }),
       setTemplates: (templates) => set({ templates }),
@@ -219,7 +221,7 @@ export const useAppStore = create<AppState>()(
         const customer = get().getCurrentCustomer();
         const projectNames = customer?.projectNames?.join('、') || '多项目';
         
-        const isOffline = get().offlinePhotos.length > 0 || Math.random() > 0.6;
+        const isOffline = offlinePhotos.length > 0;
         
         const uploadRecord: UploadRecord = {
           id: 'upload_' + generateId(),
@@ -282,76 +284,74 @@ export const useAppStore = create<AppState>()(
       },
       
       retryUpload: (recordId) => {
-        const { uploadRecords } = get();
+        const { uploadRecords, offlinePhotos } = get();
+        const targetRecord = uploadRecords.find(r => r.id === recordId);
         const updatedRecords = uploadRecords.map(r => {
           if (r.id === recordId) {
             return { ...r, status: 'success' as const, isOffline: false, failedCount: 0 };
           }
           return r;
         });
-        set({ uploadRecords: updatedRecords });
+        
+        let newOfflinePhotos = offlinePhotos;
+        if (targetRecord) {
+          newOfflinePhotos = offlinePhotos.filter(
+            p => !(p.customerId === targetRecord.customerId && p.projectName === targetRecord.projectName)
+          );
+        }
+        
+        set({ uploadRecords: updatedRecords, offlinePhotos: newOfflinePhotos });
         console.log('[Store] 重试上传:', recordId);
       },
       
       retryAllOffline: () => {
         const { uploadRecords } = get();
         const updatedRecords = uploadRecords.map(r => {
-          if (r.isOffline && r.status === 'pending') {
+          if (r.isOffline) {
             return { ...r, status: 'success' as const, isOffline: false };
           }
           if (r.status === 'failed') {
             return { ...r, status: 'success' as const, failedCount: 0 };
           }
+          if (r.status === 'partial') {
+            return { ...r, status: 'success' as const, failedCount: 0 };
+          }
           return r;
         });
         set({ uploadRecords: updatedRecords, offlinePhotos: [] });
-        console.log('[Store] 全部重试离线照片');
+        console.log('[Store] 全部重试离线照片完成');
       },
       
       loadInitialData: () => {
         const state = get();
         
-        if (state.customers.length === 0) {
-          const customers = getTodayCustomers();
-          set({ customers });
-          console.log('[Store] 加载客户数据:', customers.length, '位');
-        } else {
-          console.log('[Store] 客户数据已存在，跳过加载');
+        if (state.isInitialSeedDone) {
+          console.log('[Store] 初始种子已完成，跳过加载');
+          set({ isDataLoaded: true });
+          return;
         }
         
-        if (state.templates.length === 0) {
-          const templates = getAllTemplates();
-          set({ templates });
-          console.log('[Store] 加载模板数据:', templates.length, '个');
-        } else {
-          console.log('[Store] 模板数据已存在，跳过加载');
-        }
+        const customers = getTodayCustomers();
+        const templates = getAllTemplates();
+        const supplementTasks = getSupplementTasks();
+        const uploadRecords = getUploadRecords();
+        const offlinePhotos = getOfflinePhotos();
         
-        if (state.supplementTasks.length === 0) {
-          const supplementTasks = getSupplementTasks();
-          set({ supplementTasks });
-          console.log('[Store] 加载待补任务:', supplementTasks.length, '个');
-        } else {
-          console.log('[Store] 待补任务已存在，跳过加载');
-        }
+        set({
+          customers,
+          templates,
+          supplementTasks,
+          uploadRecords,
+          offlinePhotos,
+          isInitialSeedDone: true,
+          isDataLoaded: true
+        });
         
-        if (state.uploadRecords.length === 0) {
-          const uploadRecords = getUploadRecords();
-          set({ uploadRecords });
-          console.log('[Store] 加载上传记录:', uploadRecords.length, '条');
-        } else {
-          console.log('[Store] 上传记录已存在，跳过加载');
-        }
-        
-        if (state.offlinePhotos.length === 0) {
-          const offlinePhotos = getOfflinePhotos();
-          set({ offlinePhotos });
-          console.log('[Store] 加载离线照片:', offlinePhotos.length, '张');
-        } else {
-          console.log('[Store] 离线照片已存在，跳过加载');
-        }
-        
-        set({ isDataLoaded: true });
+        console.log('[Store] 初始数据加载完成',
+          customers.length, '位客户',
+          templates.length, '个模板',
+          uploadRecords.length, '条上传记录'
+        );
       }
     }),
     {
@@ -365,7 +365,8 @@ export const useAppStore = create<AppState>()(
         currentProjectIndex: state.currentProjectIndex,
         currentShootSession: state.currentShootSession,
         supplementTasks: state.supplementTasks,
-        isDataLoaded: state.isDataLoaded
+        isDataLoaded: state.isDataLoaded,
+        isInitialSeedDone: state.isInitialSeedDone
       })
     }
   )

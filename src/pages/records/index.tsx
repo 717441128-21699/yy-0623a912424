@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
@@ -17,29 +17,37 @@ const RecordsPage: React.FC = () => {
   
   const [filter, setFilter] = useState<FilterType>('all');
 
-  const filteredRecords = uploadRecords.filter(r => {
-    if (filter === 'all') return true;
-    if (filter === 'offline') return r.isOffline;
-    return r.status === filter;
-  });
+  const stats = useMemo(() => {
+    const success = uploadRecords.filter(r => r.status === 'success' && !r.isOffline).length;
+    const pending = uploadRecords.filter(r => 
+      r.status === 'pending' || r.status === 'partial'
+    ).length;
+    const failed = uploadRecords.filter(r => r.status === 'failed').length;
+    const offline = uploadRecords.filter(r => r.isOffline).length;
+    return { success, pending, failed, offline, total: uploadRecords.length };
+  }, [uploadRecords]);
 
-  const stats = {
-    total: uploadRecords.length,
-    success: uploadRecords.filter(r => r.status === 'success').length,
-    pending: uploadRecords.filter(r => r.status === 'pending' || r.status === 'partial').length,
-    failed: uploadRecords.filter(r => r.status === 'failed').length,
-    offline: uploadRecords.filter(r => r.isOffline).length
-  };
+  const filteredRecords = useMemo(() => {
+    return uploadRecords.filter(r => {
+      if (filter === 'all') return true;
+      if (filter === 'success') return r.status === 'success' && !r.isOffline;
+      if (filter === 'pending') return r.status === 'pending' || r.status === 'partial';
+      if (filter === 'failed') return r.status === 'failed';
+      if (filter === 'offline') return r.isOffline;
+      return true;
+    });
+  }, [uploadRecords, filter]);
 
-  const filters: { key: FilterType; label: string }[] = [
-    { key: 'all', label: '全部' },
-    { key: 'success', label: '成功' },
-    { key: 'pending', label: '待上传' },
-    { key: 'failed', label: '失败' },
-    { key: 'offline', label: '离线' }
+  const filters: { key: FilterType; label: string; count: number }[] = [
+    { key: 'all', label: '全部', count: stats.total },
+    { key: 'success', label: '成功', count: stats.success },
+    { key: 'pending', label: '待上传', count: stats.pending },
+    { key: 'failed', label: '失败', count: stats.failed },
+    { key: 'offline', label: '离线', count: stats.offline }
   ];
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, isOffline?: boolean) => {
+    if (isOffline) return '离线暂存';
     const map: Record<string, string> = {
       success: '上传成功',
       pending: '待上传',
@@ -47,6 +55,17 @@ const RecordsPage: React.FC = () => {
       partial: '部分成功'
     };
     return map[status] || status;
+  };
+
+  const getStatusStyle = (status: string, isOffline?: boolean) => {
+    if (isOffline) return styles.offline;
+    const map: Record<string, string> = {
+      success: styles.success,
+      pending: styles.pending,
+      failed: styles.failed,
+      partial: styles.partial
+    };
+    return map[status] || '';
   };
 
   const handleRecordClick = useCallback((record: UploadRecord) => {
@@ -83,6 +102,10 @@ const RecordsPage: React.FC = () => {
     });
   }, []);
 
+  const needsRetry = (record: UploadRecord) => {
+    return record.status === 'failed' || record.status === 'partial' || record.isOffline;
+  };
+
   return (
     <View className={styles.pageContainer}>
       <View className={styles.statsRow}>
@@ -99,18 +122,18 @@ const RecordsPage: React.FC = () => {
           <Text className={styles.statLabel}>上传失败</Text>
         </View>
         <View className={styles.statCard}>
-          <Text className={classnames(styles.statNum, styles.offline)}>{offlinePhotos.length}</Text>
+          <Text className={classnames(styles.statNum, styles.offline)}>{stats.offline}</Text>
           <Text className={styles.statLabel}>离线暂存</Text>
         </View>
       </View>
 
-      {offlinePhotos.length > 0 && (
+      {stats.offline > 0 && (
         <View className={styles.offlineNotice}>
           <Text className={styles.noticeIcon}>📡</Text>
           <View className={styles.noticeContent}>
             <Text className={styles.noticeTitle}>网络恢复中</Text>
             <Text className={styles.noticeDesc}>
-              有 {offlinePhotos.length} 张照片暂存本地，网络恢复后将自动上传
+              有 {stats.offline} 条离线记录待上传
             </Text>
           </View>
           <Button className={styles.retryAllBtn} onClick={handleRetryAllOffline}>
@@ -127,6 +150,7 @@ const RecordsPage: React.FC = () => {
             onClick={() => setFilter(item.key)}
           >
             <Text>{item.label}</Text>
+            <Text className={styles.filterCount}>({item.count})</Text>
           </View>
         ))}
       </ScrollView>
@@ -149,8 +173,8 @@ const RecordsPage: React.FC = () => {
                     </Text>
                   )}
                 </View>
-                <View className={classnames(styles.statusBadge, styles[record.status])}>
-                  <Text>{getStatusText(record.status)}</Text>
+                <View className={classnames(styles.statusBadge, getStatusStyle(record.status, record.isOffline))}>
+                  <Text>{getStatusText(record.status, record.isOffline)}</Text>
                 </View>
               </View>
 
@@ -179,7 +203,7 @@ const RecordsPage: React.FC = () => {
               <View className={styles.recordFooter}>
                 <Text className={styles.uploadTime}>{formatDateTime(record.uploadTime)}</Text>
                 <View style={{ display: 'flex', gap: '16rpx' }}>
-                  {(record.status === 'failed' || record.status === 'partial' || record.isOffline) && (
+                  {needsRetry(record) && (
                     <Button
                       className={classnames(styles.actionBtn, styles.retry)}
                       onClick={(e) => {

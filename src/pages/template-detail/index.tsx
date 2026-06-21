@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import { useRouter } from '@tarojs/taro';
 import { useAppStore } from '@/store';
-import { getTemplateById } from '@/data/templates';
+import { getTemplateById, getAllTemplates } from '@/data/templates';
 import { ProjectTemplate } from '@/types';
 import styles from './index.module.scss';
 
@@ -10,31 +10,42 @@ const TemplateDetailPage: React.FC = () => {
   const storeTemplates = useAppStore(state => state.templates);
   const router = useRouter();
   const [templateId, setTemplateId] = useState<string>('');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const id = router.params?.id || '';
     if (id) {
       setTemplateId(id);
       console.log('[TemplateDetail] 模板ID:', id);
+    } else {
+      if (retryCount < 5) {
+        const timer = setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, 200);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [router.params]);
+  }, [router.params, retryCount]);
 
   const template = useMemo<ProjectTemplate | undefined>(() => {
     if (!templateId) return undefined;
     
     const fromStore = storeTemplates.find(t => t.id === templateId);
     if (fromStore) {
-      console.log('[TemplateDetail] 从 store 找到模板');
       return fromStore;
+    }
+    
+    const allTemplates = getAllTemplates();
+    const fromAll = allTemplates.find(t => t.id === templateId);
+    if (fromAll) {
+      return fromAll;
     }
     
     const fromData = getTemplateById(templateId);
     if (fromData) {
-      console.log('[TemplateDetail] 从 data 找到模板（fallback）');
       return fromData;
     }
     
-    console.warn('[TemplateDetail] 未找到模板:', templateId);
     return undefined;
   }, [templateId, storeTemplates]);
 
@@ -66,8 +77,9 @@ const TemplateDetailPage: React.FC = () => {
     return (
       <View className={styles.pageContainer}>
         <View style={{ padding: '100rpx 32rpx', textAlign: 'center' }}>
+          <Text style={{ fontSize: '48rpx', display: 'block', marginBottom: '24rpx' }}>🔍</Text>
           <Text style={{ fontSize: '28rpx', color: '#86909C' }}>
-            项目模板不存在
+            {templateId ? '项目模板不存在' : '正在加载项目详情...'}
           </Text>
         </View>
       </View>
