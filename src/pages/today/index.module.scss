@@ -1,0 +1,201 @@
+@use '@/styles/variables.scss' as *;
+
+.pageContainer {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 40rpx;
+}
+
+.header {
+  position: relative;
+  height: 360rpx;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  padding: 0 $page-padding;
+  padding-top: 48rpx;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-lg;
+}
+
+.headerTitle {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+}
+
+.headerDate {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+}
+
+.scanBtn {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .scanIcon {
+    font-size: 36rpx;
+    color: $color-text-white;
+  }
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.statsCard {
+  position: relative;
+  margin: 0 $page-padding;
+  margin-top: -60rpx;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  z-index: 10;
+}
+
+.statsTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.statsGrid {
+  display: flex;
+  justify-content: space-between;
+}
+
+.statItem {
+  flex: 1;
+  text-align: center;
+  
+  &:not(:last-child) {
+    border-right: 1rpx solid $color-divider;
+  }
+}
+
+.statNum {
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+  margin-bottom: 8rpx;
+  
+  &.total { color: $color-primary; }
+  &.waiting { color: $color-warning; }
+  &.shooting { color: $color-info; }
+  &.completed { color: $color-success; }
+}
+
+.statLabel {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  padding: 0 $page-padding;
+  margin-top: $spacing-lg;
+  margin-bottom: $spacing-md;
+  background: $color-bg-page;
+}
+
+.filterItem {
+  flex: 1;
+  text-align: center;
+  padding: $spacing-md 0;
+  position: cursor;
+  
+  .filterText {
+    font-size: $font-size-md;
+    color: $color-text-secondary;
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+  }
+  
+  .filterCount {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-left: 6rpx;
+  }
+  
+  &.active {
+    .filterText {
+      color: $color-primary;
+      font-weight: $font-weight-semibold;
+    }
+    
+    .filterCount {
+      color: $color-primary;
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48rpx;
+      height: 6rpx;
+      background: $color-primary;
+      border-radius: 3rpx;
+    }
+  }
+}
+
+.listContainer {
+  padding: 0 $page-padding;
+  padding-top: $spacing-sm;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  
+  .emptyIcon {
+    font-size: 120rpx;
+    margin-bottom: $spacing-md;
+    opacity: 0.3;
+  }
+  
+  .emptyText {
+    font-size: $font-size-md;
+    color: $color-text-tertiary;
+  }
+}
+
+.quickActions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+}
+
+.quickAction {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  height: $button-height-md;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-button;
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}

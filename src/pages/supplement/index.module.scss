@@ -1,0 +1,270 @@
+@use '@/styles/variables.scss' as *;
+
+.pageContainer {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 40rpx;
+}
+
+.summaryCard {
+  margin: $spacing-md $page-padding;
+  padding: $spacing-lg;
+  background: linear-gradient(135deg, $color-warning 0%, #FF9A2E 100%);
+  border-radius: $radius-lg;
+  color: $color-text-white;
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.summaryTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+}
+
+.summaryBtn {
+  padding: 8rpx 20rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.summaryStats {
+  display: flex;
+  gap: $spacing-xl;
+}
+
+.summaryItem {
+  .statNum {
+    font-size: 48rpx;
+    font-weight: $font-weight-bold;
+    line-height: 1.2;
+  }
+  
+  .statLabel {
+    font-size: $font-size-sm;
+    opacity: 0.9;
+    margin-top: 4rpx;
+  }
+}
+
+.filterBar {
+  display: flex;
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+  gap: $spacing-sm;
+}
+
+.filterTab {
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  
+  &.active {
+    background: $color-primary;
+    color: $color-text-white;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.taskList {
+  padding: 0 $page-padding;
+}
+
+.taskCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+  
+  &:active {
+    transform: scale(0.98);
+    box-shadow: $shadow-card-hover;
+  }
+  
+  &.completed {
+    opacity: 0.6;
+  }
+}
+
+.taskHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.customerInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.customerName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.priorityBadge {
+  padding: 4rpx 12rpx;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  
+  &.high {
+    background: $color-error-light;
+    color: $color-error;
+  }
+  
+  &.medium {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.low {
+    background: $color-primary-lighter;
+    color: $color-primary;
+  }
+}
+
+.sourceTag {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  background: $color-bg-light;
+  padding: 4rpx 10rpx;
+  border-radius: $radius-xs;
+}
+
+.taskBody {
+  margin-bottom: $spacing-md;
+}
+
+.projectName {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  font-weight: $font-weight-medium;
+}
+
+.missingAngles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.angleTag {
+  padding: 8rpx 16rpx;
+  background: $color-error-light;
+  color: $color-error;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.taskFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.deadline {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  
+  &.urgent {
+    color: $color-error;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.actionBtn {
+  @include button-reset;
+  height: $button-height-sm;
+  padding: 0 $spacing-lg;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  
+  &:active {
+    opacity: 0.85;
+  }
+  
+  &.secondary {
+    background: $color-bg-hover;
+    color: $color-text-secondary;
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  
+  .emptyIcon {
+    font-size: 100rpx;
+    margin-bottom: $spacing-md;
+    opacity: 0.5;
+  }
+  
+  .emptyText {
+    font-size: $font-size-md;
+    color: $color-text-tertiary;
+    margin-bottom: $spacing-sm;
+  }
+  
+  .emptyDesc {
+    font-size: $font-size-sm;
+    color: $color-text-disabled;
+  }
+}
+
+.recheckSection {
+  margin: $spacing-lg $page-padding $spacing-md;
+  
+  .sectionTitle {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: $spacing-md;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+  
+  .recheckBadge {
+    padding: 4rpx 12rpx;
+    background: $color-secondary-lighter;
+    color: $color-secondary;
+    border-radius: $radius-xs;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+  }
+}

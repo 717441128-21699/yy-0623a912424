@@ -1,0 +1,365 @@
+@use '@/styles/variables.scss' as *;
+
+.pageContainer {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 160rpx;
+}
+
+.customerBar {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md $page-padding;
+  background: $color-bg-card;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.customerInfo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.customerAvatar {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-round;
+  background: linear-gradient(135deg, $color-primary-lighter 0%, $color-secondary-lighter 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .avatarText {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $color-primary;
+  }
+}
+
+.customerName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.projectName {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-left: $spacing-sm;
+}
+
+.progressBox {
+  margin: $spacing-md $page-padding;
+  padding: $spacing-md $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+}
+
+.progressTitle {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.progressNum {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.progressBar {
+  height: 12rpx;
+  background: $color-bg-light;
+  border-radius: 6rpx;
+  overflow: hidden;
+  
+  .progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, $color-primary 0%, $color-secondary 100%);
+    border-radius: 6rpx;
+    transition: width $transition-base;
+  }
+}
+
+.angleList {
+  padding: 0 $page-padding;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin: $spacing-lg 0 $spacing-md;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: '';
+    width: 6rpx;
+    height: 28rpx;
+    background: $color-primary;
+    border-radius: 3rpx;
+    margin-right: $spacing-sm;
+  }
+}
+
+.angleGrid {
+  @include scroll-x-container;
+  gap: $spacing-md;
+  padding-bottom: $spacing-sm;
+}
+
+.angleScrollItem {
+  @include scroll-x-item(200rpx);
+}
+
+.angleItem {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  overflow: hidden;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+  display: inline-flex;
+  flex-direction: column;
+  
+  &:active {
+    transform: scale(0.96);
+  }
+  
+  &.active {
+    border: 3rpx solid $color-primary;
+  }
+  
+  &.completed {
+    opacity: 0.8;
+  }
+}
+
+.anglePreview {
+  position: relative;
+  height: 280rpx;
+  background: $color-bg-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .previewImage {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .previewPlaceholder {
+    font-size: 80rpx;
+    opacity: 0.3;
+  }
+}
+
+.angleInfo {
+  padding: $spacing-sm $spacing-md;
+}
+
+.angleName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: 4rpx;
+}
+
+.angleStatus {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  
+  &.completed {
+    color: $color-success;
+  }
+  
+  &.required {
+    color: $color-error;
+  }
+}
+
+.doneBadge {
+  position: absolute;
+  top: $spacing-sm;
+  right: $spacing-sm;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: $color-success;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-bold;
+}
+
+.requiredBadge {
+  position: absolute;
+  top: $spacing-sm;
+  left: $spacing-sm;
+  padding: 4rpx 10rpx;
+  background: $color-error;
+  color: $color-text-white;
+  font-size: 20rpx;
+  border-radius: $radius-xs;
+}
+
+.tipsCard {
+  margin: $spacing-lg $page-padding;
+  padding: $spacing-lg;
+  background: linear-gradient(135deg, #FFFBE6 0%, #FFF7E8 100%);
+  border-radius: $radius-lg;
+  border: 1rpx solid #FFE58F;
+}
+
+.tipsTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: #AD6800;
+  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.tipsList {
+  li {
+    font-size: $font-size-sm;
+    color: #AD6800;
+    line-height: $line-height-normal;
+    margin-bottom: 8rpx;
+    padding-left: $spacing-sm;
+    position: relative;
+    
+    &::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+    }
+  }
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: $spacing-md $page-padding;
+  padding-bottom: calc(#{$spacing-md} + env(safe-area-inset-bottom));
+  background: $color-bg-card;
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.actionButtons {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.primaryBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+  
+  &.disabled {
+    background: $color-text-disabled;
+  }
+}
+
+.secondaryBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  background: $color-bg-hover;
+  color: $color-text-secondary;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.photoPreview {
+  position: relative;
+  width: 100%;
+  height: 400rpx;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .photoImage {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .guideOverlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    color: $color-text-white;
+  }
+  
+  .guideTitle {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    margin-bottom: $spacing-sm;
+  }
+  
+  .guideDesc {
+    font-size: $font-size-sm;
+    opacity: 0.8;
+    text-align: center;
+    padding: 0 $spacing-lg;
+  }
+}
+
+.warningTips {
+  margin: $spacing-md $page-padding;
+  padding: $spacing-md;
+  background: $color-error-light;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-sm;
+  
+  .warningIcon {
+    font-size: $font-size-lg;
+    flex-shrink: 0;
+  }
+  
+  .warningText {
+    flex: 1;
+    font-size: $font-size-sm;
+    color: $color-error;
+    line-height: $line-height-normal;
+  }
+}

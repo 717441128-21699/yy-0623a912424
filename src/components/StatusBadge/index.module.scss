@@ -1,0 +1,73 @@
+@use '@/styles/variables.scss' as *;
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rpx 16rpx;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  line-height: 1.4;
+  white-space: nowrap;
+  
+  &.waiting {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.shooting {
+    background: $color-primary-lighter;
+    color: $color-primary;
+  }
+  
+  &.completed {
+    background: $color-success-light;
+    color: $color-success;
+  }
+  
+  &.cancelled {
+    background: $color-bg-hover;
+    color: $color-text-tertiary;
+  }
+  
+  &.pending {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.uploading {
+    background: $color-primary-lighter;
+    color: $color-primary;
+  }
+  
+  &.success {
+    background: $color-success-light;
+    color: $color-success;
+  }
+  
+  &.failed {
+    background: $color-error-light;
+    color: $color-error;
+  }
+  
+  &.partial {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.high {
+    background: $color-error-light;
+    color: $color-error;
+  }
+  
+  &.medium {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.low {
+    background: $color-primary-lighter;
+    color: $color-primary;
+  }
+}
