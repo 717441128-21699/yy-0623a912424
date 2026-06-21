@@ -43,6 +43,48 @@
   color: $color-text-primary;
 }
 
+.projectTabs {
+  @include scroll-x-container;
+  margin-top: $spacing-xs;
+  gap: $spacing-sm;
+  white-space: nowrap;
+}
+
+.projectTab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-xs $spacing-md;
+  background: $color-bg-light;
+  border-radius: $radius-md;
+  gap: 4rpx;
+  transition: all $transition-base;
+  
+  &.active {
+    background: $color-primary;
+    
+    .projectTabText {
+      color: $color-text-white;
+    }
+    
+    .projectTabCount {
+      color: rgba(255, 255, 255, 0.8);
+    }
+  }
+}
+
+.projectTabText {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-secondary;
+  white-space: nowrap;
+}
+
+.projectTabCount {
+  font-size: 20rpx;
+  color: $color-text-tertiary;
+}
+
 .projectName {
   font-size: $font-size-sm;
   color: $color-text-tertiary;
@@ -187,6 +229,12 @@
   &.required {
     color: $color-error;
   }
+}
+
+.qualityText {
+  font-size: 20rpx;
+  font-weight: $font-weight-medium;
+  line-height: 1.4;
 }
 
 .doneBadge {

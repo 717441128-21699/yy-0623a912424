@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import { useRouter } from '@tarojs/taro';
 import { useAppStore } from '@/store';
+import { getTemplateById } from '@/data/templates';
+import { ProjectTemplate } from '@/types';
 import styles from './index.module.scss';
 
 const TemplateDetailPage: React.FC = () => {
-  const templates = useAppStore(state => state.templates);
+  const storeTemplates = useAppStore(state => state.templates);
   const router = useRouter();
   const [templateId, setTemplateId] = useState<string>('');
 
@@ -17,19 +19,24 @@ const TemplateDetailPage: React.FC = () => {
     }
   }, [router.params]);
 
-  const template = templates.find(t => t.id === templateId);
-
-  if (!template) {
-    return (
-      <View className={styles.pageContainer}>
-        <View style={{ padding: '100rpx 32rpx', textAlign: 'center' }}>
-          <Text style={{ fontSize: '28rpx', color: '#86909C' }}>
-            模板加载中...
-          </Text>
-        </View>
-      </View>
-    );
-  }
+  const template = useMemo<ProjectTemplate | undefined>(() => {
+    if (!templateId) return undefined;
+    
+    const fromStore = storeTemplates.find(t => t.id === templateId);
+    if (fromStore) {
+      console.log('[TemplateDetail] 从 store 找到模板');
+      return fromStore;
+    }
+    
+    const fromData = getTemplateById(templateId);
+    if (fromData) {
+      console.log('[TemplateDetail] 从 data 找到模板（fallback）');
+      return fromData;
+    }
+    
+    console.warn('[TemplateDetail] 未找到模板:', templateId);
+    return undefined;
+  }, [templateId, storeTemplates]);
 
   const getDirectionIcon = (direction: string) => {
     const icons: Record<string, string> = {
@@ -54,6 +61,18 @@ const TemplateDetailPage: React.FC = () => {
     };
     return texts[direction] || direction;
   };
+
+  if (!template) {
+    return (
+      <View className={styles.pageContainer}>
+        <View style={{ padding: '100rpx 32rpx', textAlign: 'center' }}>
+          <Text style={{ fontSize: '28rpx', color: '#86909C' }}>
+            项目模板不存在
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   const requiredCount = template.angles.filter(a => a.isRequired).length;
 

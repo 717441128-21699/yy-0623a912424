@@ -6,13 +6,16 @@ import { getTemplateById, getAllTemplates } from '@/data/templates';
 import { getSupplementTasks, getUploadRecords, getOfflinePhotos } from '@/data/records';
 import { generateId } from '@/utils';
 
+interface ProjectPhotoMap {
+  [projectId: string]: PhotoRecord[];
+}
+
 interface ShootSession {
   id: string;
   customerId: string;
   customerName: string;
-  projectId: string;
-  projectName: string;
-  photos: PhotoRecord[];
+  currentProjectId: string;
+  projectPhotos: ProjectPhotoMap;
   isCaseAuthorized: boolean;
   remark: string;
   startTime: string;
@@ -30,6 +33,8 @@ interface AppState {
   currentProjectIndex: number;
   currentShootSession: ShootSession | null;
   
+  isDataLoaded: boolean;
+  
   setCustomers: (customers: Customer[]) => void;
   setTemplates: (templates: ProjectTemplate[]) => void;
   setSupplementTasks: (tasks: SupplementTask[]) => void;
@@ -39,10 +44,13 @@ interface AppState {
   selectCustomer: (customerId: string) => void;
   getCurrentCustomer: () => Customer | undefined;
   
-  startShootSession: (customerId: string, projectId: string) => void;
+  startShootSession: (customerId: string) => void;
+  switchProject: (projectId: string) => void;
   updateShootSession: (updates: Partial<ShootSession>) => void;
   addPhotoToSession: (photo: PhotoRecord) => void;
-  submitShootSession: () => void;
+  getSessionPhotosByProject: (projectId: string) => PhotoRecord[];
+  getAllSessionPhotos: () => PhotoRecord[];
+  submitShootSession: () => UploadRecord | null;
   clearShootSession: () => void;
   
   findCustomerByNo: (appointmentNo: string) => Customer | undefined;
@@ -69,6 +77,8 @@ export const useAppStore = create<AppState>()(
       currentProjectIndex: 0,
       currentShootSession: null,
       
+      isDataLoaded: false,
+      
       setCustomers: (customers) => set({ customers }),
       setTemplates: (templates) => set({ templates }),
       setSupplementTasks: (tasks) => set({ supplementTasks: tasks }),
@@ -80,7 +90,7 @@ export const useAppStore = create<AppState>()(
         
         const customer = get().findCustomerById(customerId);
         if (customer) {
-          get().startShootSession(customerId, customer.projectIds[0]);
+          get().startShootSession(customerId);
         }
       },
       
@@ -89,27 +99,59 @@ export const useAppStore = create<AppState>()(
         return customers.find(c => c.id === currentCustomerId);
       },
       
-      startShootSession: (customerId, projectId) => {
+      startShootSession: (customerId) => {
         const customer = get().findCustomerById(customerId);
-        const template = getTemplateById(projectId);
+        if (!customer || customer.projectIds.length === 0) return;
         
-        if (!customer || !template) return;
+        const existingSession = get().currentShootSession;
+        if (existingSession && existingSession.customerId === customerId) {
+          return;
+        }
+        
+        const firstProjectId = customer.projectIds[0];
+        const projectPhotos: ProjectPhotoMap = {};
+        customer.projectIds.forEach(pid => {
+          projectPhotos[pid] = [];
+        });
         
         const session: ShootSession = {
           id: 'session_' + generateId(),
           customerId,
           customerName: customer.name,
-          projectId,
-          projectName: template.name,
-          photos: [],
+          currentProjectId: firstProjectId,
+          projectPhotos,
           isCaseAuthorized: customer.isCaseAuthorized,
           remark: '',
           startTime: new Date().toISOString(),
           status: 'shooting'
         };
         
-        set({ currentShootSession: session });
-        console.log('[Store] 开始拍摄会话:', session.id, customer.name, template.name);
+        set({ 
+          currentShootSession: session,
+          currentProjectIndex: 0
+        });
+        console.log('[Store] 开始拍摄会话:', session.id, customer.name, '共', customer.projectIds.length, '个项目');
+      },
+      
+      switchProject: (projectId) => {
+        const { currentShootSession } = get();
+        if (!currentShootSession) return;
+        
+        const customer = get().getCurrentCustomer();
+        if (!customer) return;
+        
+        const projectIndex = customer.projectIds.indexOf(projectId);
+        if (projectIndex === -1) return;
+        
+        set({
+          currentShootSession: {
+            ...currentShootSession,
+            currentProjectId: projectId
+          },
+          currentProjectIndex: projectIndex
+        });
+        
+        console.log('[Store] 切换项目:', projectId, '索引:', projectIndex);
       },
       
       updateShootSession: (updates) => {
@@ -128,39 +170,63 @@ export const useAppStore = create<AppState>()(
         const { currentShootSession } = get();
         if (!currentShootSession) return;
         
-        const existingIndex = currentShootSession.photos.findIndex(p => p.angleId === photo.angleId);
-        let newPhotos: PhotoRecord[];
+        const projectPhotos = currentShootSession.projectPhotos[photo.projectId] || [];
+        const existingIndex = projectPhotos.findIndex(p => p.angleId === photo.angleId);
         
+        let newProjectPhotos: PhotoRecord[];
         if (existingIndex >= 0) {
-          newPhotos = [...currentShootSession.photos];
-          newPhotos[existingIndex] = photo;
+          newProjectPhotos = [...projectPhotos];
+          newProjectPhotos[existingIndex] = photo;
         } else {
-          newPhotos = [...currentShootSession.photos, photo];
+          newProjectPhotos = [...projectPhotos, photo];
         }
+        
+        const newProjectPhotoMap = {
+          ...currentShootSession.projectPhotos,
+          [photo.projectId]: newProjectPhotos
+        };
         
         set({
           currentShootSession: {
             ...currentShootSession,
-            photos: newPhotos
+            projectPhotos: newProjectPhotoMap
           }
         });
         
-        console.log('[Store] 添加照片到会话:', photo.angleName, '共', newPhotos.length, '张');
+        const total = Object.values(newProjectPhotoMap).reduce((sum, arr) => sum + arr.length, 0);
+        console.log('[Store] 添加照片:', photo.projectName, photo.angleName, '项目内', newProjectPhotos.length, '张，总计', total, '张');
+      },
+      
+      getSessionPhotosByProject: (projectId) => {
+        const { currentShootSession } = get();
+        if (!currentShootSession) return [];
+        return currentShootSession.projectPhotos[projectId] || [];
+      },
+      
+      getAllSessionPhotos: () => {
+        const { currentShootSession } = get();
+        if (!currentShootSession) return [];
+        return Object.values(currentShootSession.projectPhotos).flat();
       },
       
       submitShootSession: () => {
         const { currentShootSession, uploadRecords, offlinePhotos } = get();
-        if (!currentShootSession || currentShootSession.photos.length === 0) return;
+        if (!currentShootSession) return null;
         
-        const photos = currentShootSession.photos;
-        const isOffline = Math.random() > 0.5;
+        const allPhotos = Object.values(currentShootSession.projectPhotos).flat();
+        if (allPhotos.length === 0) return null;
+        
+        const customer = get().getCurrentCustomer();
+        const projectNames = customer?.projectNames?.join('、') || '多项目';
+        
+        const isOffline = get().offlinePhotos.length > 0 || Math.random() > 0.6;
         
         const uploadRecord: UploadRecord = {
           id: 'upload_' + generateId(),
           customerId: currentShootSession.customerId,
           customerName: currentShootSession.customerName,
-          projectName: currentShootSession.projectName,
-          photoCount: photos.length,
+          projectName: projectNames,
+          photoCount: allPhotos.length,
           uploadTime: new Date().toISOString(),
           status: isOffline ? 'pending' : 'success',
           isOffline: isOffline,
@@ -169,7 +235,7 @@ export const useAppStore = create<AppState>()(
         };
         
         const newUploadRecords = [uploadRecord, ...uploadRecords];
-        const newOfflinePhotos = isOffline ? [...photos, ...offlinePhotos] : offlinePhotos;
+        const newOfflinePhotos = isOffline ? [...allPhotos, ...offlinePhotos] : offlinePhotos;
         
         set({
           uploadRecords: newUploadRecords,
@@ -180,7 +246,9 @@ export const useAppStore = create<AppState>()(
           }
         });
         
-        console.log('[Store] 提交拍摄会话:', photos.length, '张照片', isOffline ? '（离线暂存）' : '（已上传）');
+        console.log('[Store] 提交拍摄会话:', allPhotos.length, '张照片', 
+          '项目数:', Object.keys(currentShootSession.projectPhotos).length,
+          isOffline ? '（离线暂存）' : '（已上传）');
         
         return uploadRecord;
       },
@@ -226,7 +294,7 @@ export const useAppStore = create<AppState>()(
       },
       
       retryAllOffline: () => {
-        const { uploadRecords, offlinePhotos } = get();
+        const { uploadRecords } = get();
         const updatedRecords = uploadRecords.map(r => {
           if (r.isOffline && r.status === 'pending') {
             return { ...r, status: 'success' as const, isOffline: false };
@@ -241,36 +309,63 @@ export const useAppStore = create<AppState>()(
       },
       
       loadInitialData: () => {
-        const customers = getTodayCustomers();
-        const templates = getAllTemplates();
-        const supplementTasks = getSupplementTasks();
-        const uploadRecords = getUploadRecords();
-        const offlinePhotos = getOfflinePhotos();
+        const state = get();
         
-        set({
-          customers,
-          templates,
-          supplementTasks,
-          uploadRecords,
-          offlinePhotos
-        });
+        if (state.customers.length === 0) {
+          const customers = getTodayCustomers();
+          set({ customers });
+          console.log('[Store] 加载客户数据:', customers.length, '位');
+        } else {
+          console.log('[Store] 客户数据已存在，跳过加载');
+        }
         
-        console.log('[Store] 初始数据加载完成', 
-          customers.length, '位客户',
-          templates.length, '个模板',
-          uploadRecords.length, '条上传记录'
-        );
+        if (state.templates.length === 0) {
+          const templates = getAllTemplates();
+          set({ templates });
+          console.log('[Store] 加载模板数据:', templates.length, '个');
+        } else {
+          console.log('[Store] 模板数据已存在，跳过加载');
+        }
+        
+        if (state.supplementTasks.length === 0) {
+          const supplementTasks = getSupplementTasks();
+          set({ supplementTasks });
+          console.log('[Store] 加载待补任务:', supplementTasks.length, '个');
+        } else {
+          console.log('[Store] 待补任务已存在，跳过加载');
+        }
+        
+        if (state.uploadRecords.length === 0) {
+          const uploadRecords = getUploadRecords();
+          set({ uploadRecords });
+          console.log('[Store] 加载上传记录:', uploadRecords.length, '条');
+        } else {
+          console.log('[Store] 上传记录已存在，跳过加载');
+        }
+        
+        if (state.offlinePhotos.length === 0) {
+          const offlinePhotos = getOfflinePhotos();
+          set({ offlinePhotos });
+          console.log('[Store] 加载离线照片:', offlinePhotos.length, '张');
+        } else {
+          console.log('[Store] 离线照片已存在，跳过加载');
+        }
+        
+        set({ isDataLoaded: true });
       }
     }),
     {
       name: 'medical-photo-storage',
       partialize: (state) => ({
         customers: state.customers,
+        templates: state.templates,
         uploadRecords: state.uploadRecords,
         offlinePhotos: state.offlinePhotos,
         currentCustomerId: state.currentCustomerId,
+        currentProjectIndex: state.currentProjectIndex,
         currentShootSession: state.currentShootSession,
-        supplementTasks: state.supplementTasks
+        supplementTasks: state.supplementTasks,
+        isDataLoaded: state.isDataLoaded
       })
     }
   )

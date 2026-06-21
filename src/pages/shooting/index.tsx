@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, Button, Image, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
-import { ProjectTemplate, PhotoRecord } from '@/types';
+import { ProjectTemplate, PhotoRecord, PhotoAngle } from '@/types';
 import { useAppStore } from '@/store';
 import { getTemplateById } from '@/data/templates';
 import { showToast, generateId } from '@/utils';
@@ -15,29 +15,32 @@ interface QualityCheck {
 
 const ShootingPage: React.FC = () => {
   const currentShootSession = useAppStore(state => state.currentShootSession);
+  const currentProjectIndex = useAppStore(state => state.currentProjectIndex);
   const getCurrentCustomer = useAppStore(state => state.getCurrentCustomer);
   const addPhotoToSession = useAppStore(state => state.addPhotoToSession);
   const submitShootSession = useAppStore(state => state.submitShootSession);
   const updateShootSession = useAppStore(state => state.updateShootSession);
+  const switchProject = useAppStore(state => state.switchProject);
+  const getSessionPhotosByProject = useAppStore(state => state.getSessionPhotosByProject);
+  const getAllSessionPhotos = useAppStore(state => state.getAllSessionPhotos);
   const startShootSession = useAppStore(state => state.startShootSession);
   
   const customer = getCurrentCustomer();
-  const [currentProjectIndex, setCurrentProjectIndex] = useState(0);
   const [currentAngleIndex, setCurrentAngleIndex] = useState(0);
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string>('');
   const [lastQuality, setLastQuality] = useState<QualityCheck | null>(null);
 
-  const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
+  const projectTemplates = useMemo<ProjectTemplate[]>(() => {
+    if (!customer) return [];
+    return customer.projectIds
+      .map(id => getTemplateById(id))
+      .filter(Boolean) as ProjectTemplate[];
+  }, [customer]);
 
   useEffect(() => {
     if (customer && customer.projectIds.length > 0) {
-      const templates = customer.projectIds
-        .map(id => getTemplateById(id))
-        .filter(Boolean) as ProjectTemplate[];
-      setProjectTemplates(templates);
-      
-      if (!currentShootSession || currentShootSession.customerId !== customer.id) {
-        startShootSession(customer.id, customer.projectIds[0]);
+      if (!currentShootSession || currentShootSession?.customerId !== customer.id) {
+        startShootSession(customer.id);
       }
     }
   }, [customer, currentShootSession, startShootSession]);
@@ -47,16 +50,33 @@ const ShootingPage: React.FC = () => {
   const angles = currentTemplate?.angles || [];
   const currentAngle = angles[currentAngleIndex];
   
-  const sessionPhotos = currentShootSession?.photos || [];
-  
-  const currentProjectPhotos = useMemo(() => {
-    if (!currentTemplate || !currentShootSession) return [];
-    return sessionPhotos.filter(p => p.projectId === currentTemplate.id);
-  }, [currentTemplate, currentShootSession, sessionPhotos]);
+  const allPhotos = currentShootSession ? getSessionPhotosByProject(currentTemplate?.id || '') : [];
+  const totalPhotos = currentShootSession ? getAllSessionPhotos().length : 0;
 
   const getPhotoForAngle = useCallback((angleId: string) => {
-    return currentProjectPhotos.find(p => p.angleId === angleId);
-  }, [currentProjectPhotos]);
+    return allPhotos.find(p => p.angleId === angleId);
+  }, [allPhotos]);
+
+  const getQualityText = (photo: PhotoRecord | undefined): string => {
+    if (!photo) return '';
+    const issues: string[] = [];
+    if (photo.exposureLevel === 'dark') issues.push('曝光偏暗');
+    if (photo.exposureLevel === 'bright') issues.push('曝光过亮');
+    if (photo.angleDeviation === 'slight') issues.push('角度微偏');
+    if (photo.angleDeviation === 'serious') issues.push('角度偏差大');
+    return issues.length > 0 ? issues.join('、') : '正常';
+  };
+
+  const getQualityColor = (photo: PhotoRecord | undefined): string => {
+    if (!photo) return '';
+    if (photo.angleDeviation === 'serious' || photo.exposureLevel === 'bright') {
+      return '#F53F3F';
+    }
+    if (photo.angleDeviation === 'slight' || photo.exposureLevel === 'dark') {
+      return '#FF7D00';
+    }
+    return '#00B42A';
+  };
 
   const simulateQualityCheck = useCallback((): QualityCheck => {
     const exposureRandom = Math.random();
@@ -73,20 +93,6 @@ const ShootingPage: React.FC = () => {
     
     return { exposure, angle };
   }, []);
-
-  const getQualityText = (quality: QualityCheck) => {
-    const texts: string[] = [];
-    if (quality.exposure === 'dark') texts.push('曝光偏暗');
-    if (quality.exposure === 'bright') texts.push('曝光过亮');
-    if (quality.angle === 'slight') texts.push('角度轻微偏差');
-    if (quality.angle === 'serious') texts.push('角度偏差较大');
-    return texts.length > 0 ? texts.join('、') : '正常';
-  };
-
-  const hasQualityIssue = (quality: QualityCheck | null) => {
-    if (!quality) return false;
-    return quality.exposure !== 'normal' || quality.angle !== 'normal';
-  };
 
   const handleTakePhoto = useCallback(() => {
     if (!customer || !currentTemplate || !currentAngle) return;
@@ -117,21 +123,35 @@ const ShootingPage: React.FC = () => {
     addPhotoToSession(photoRecord);
     setCurrentPhotoUrl(photoRecord.photoUrl);
     
-    if (hasQualityIssue(quality)) {
-      showToast('注意：' + getQualityText(quality), 'none');
+    const hasIssue = quality.exposure !== 'normal' || quality.angle !== 'normal';
+    if (hasIssue) {
+      const qualityTexts: string[] = [];
+      if (quality.exposure === 'dark') qualityTexts.push('曝光偏暗');
+      if (quality.exposure === 'bright') qualityTexts.push('曝光过亮');
+      if (quality.angle === 'slight') qualityTexts.push('角度微偏');
+      if (quality.angle === 'serious') qualityTexts.push('角度偏差大');
+      showToast('注意：' + qualityTexts.join('、'), 'none');
     } else {
       showToast('拍摄成功', 'success');
     }
     
     if (currentAngleIndex < angles.length - 1) {
       setTimeout(() => {
-        setCurrentAngleIndex(currentAngleIndex + 1);
-        const nextPhoto = getPhotoForAngle(angles[currentAngleIndex + 1].id);
+        const nextIndex = currentAngleIndex + 1;
+        setCurrentAngleIndex(nextIndex);
+        const nextPhoto = getPhotoForAngle(angles[nextIndex].id);
         setCurrentPhotoUrl(nextPhoto ? nextPhoto.photoUrl : '');
-        setLastQuality(null);
+        if (nextPhoto) {
+          setLastQuality({
+            exposure: nextPhoto.exposureLevel || 'normal',
+            angle: nextPhoto.angleDeviation || 'normal'
+          });
+        } else {
+          setLastQuality(null);
+        }
       }, 800);
     }
-  }, [customer, currentTemplate, currentAngle, currentAngleIndex, angles, 
+  }, [customer, currentTemplate, currentAngle, currentAngleIndex, currentProjectIndex, angles, 
       addPhotoToSession, simulateQualityCheck, getPhotoForAngle]);
 
   const handleAngleClick = useCallback((index: number) => {
@@ -151,13 +171,27 @@ const ShootingPage: React.FC = () => {
   const handleProjectChange = useCallback((index: number) => {
     if (!customer || index >= customer.projectIds.length) return;
     
-    setCurrentProjectIndex(index);
+    const projectId = customer.projectIds[index];
+    switchProject(projectId);
     setCurrentAngleIndex(0);
-    setCurrentPhotoUrl('');
-    setLastQuality(null);
     
-    startShootSession(customer.id, customer.projectIds[index]);
-  }, [customer, startShootSession]);
+    const template = getTemplateById(projectId);
+    if (template && template.angles.length > 0) {
+      const photos = getSessionPhotosByProject(projectId);
+      const firstPhoto = photos.find(p => p.angleId === template.angles[0].id);
+      setCurrentPhotoUrl(firstPhoto ? firstPhoto.photoUrl : '');
+      if (firstPhoto) {
+        setLastQuality({
+          exposure: firstPhoto.exposureLevel || 'normal',
+          angle: firstPhoto.angleDeviation || 'normal'
+        });
+      } else {
+        setLastQuality(null);
+      }
+    }
+    
+    console.log('[Shooting] 切换到项目:', index, projectId);
+  }, [customer, switchProject, getSessionPhotosByProject]);
 
   const handlePrevAngle = useCallback(() => {
     if (currentAngleIndex > 0) {
@@ -197,10 +231,13 @@ const ShootingPage: React.FC = () => {
     const totalRequired = projectTemplates.reduce((sum, t) => 
       sum + t.angles.filter(a => a.isRequired).length, 0
     );
+    
+    const allPhotosArr = getAllSessionPhotos();
     const completedRequired = projectTemplates.reduce((sum, t) => 
-      sum + t.angles.filter(a => 
-        a.isRequired && sessionPhotos.some(p => p.angleId === a.id && p.projectId === t.id)
-      ).length, 0
+      sum + t.angles.filter(a => {
+        if (!a.isRequired) return false;
+        return allPhotosArr.some(p => p.angleId === a.id && p.projectId === t.id);
+      }).length, 0
     );
     
     if (completedRequired < totalRequired) {
@@ -208,23 +245,25 @@ const ShootingPage: React.FC = () => {
       return;
     }
     
-    if (sessionPhotos.length === 0) {
+    if (allPhotosArr.length === 0) {
       showToast('请先拍摄照片', 'error');
       return;
     }
     
-    console.log('[Shooting] 提交照片:', sessionPhotos.length, '张');
+    console.log('[Shooting] 提交照片:', allPhotosArr.length, '张');
     
     const record = submitShootSession();
     
-    showToast('照片已提交，等待上传', 'success');
-    
-    setTimeout(() => {
-      Taro.switchTab({
-        url: '/pages/records/index'
-      });
-    }, 1000);
-  }, [projectTemplates, sessionPhotos, submitShootSession]);
+    if (record) {
+      showToast('照片已提交，等待上传', 'success');
+      
+      setTimeout(() => {
+        Taro.switchTab({
+          url: '/pages/records/index'
+        });
+      }, 1000);
+    }
+  }, [projectTemplates, getAllSessionPhotos, submitShootSession]);
 
   if (!customer || !currentTemplate) {
     return (
@@ -246,24 +285,26 @@ const ShootingPage: React.FC = () => {
     );
   }
 
-  const completedCount = currentProjectPhotos.length;
+  const completedCount = allPhotos.length;
   const requiredCount = angles.filter(a => a.isRequired).length;
-  const completedRequiredCount = angles.filter(a => 
-    a.isRequired && currentProjectPhotos.some(p => p.angleId === a.id)
-  ).length;
   const progressPercent = angles.length > 0 
-    ? Math.round((completedCount / angles.length) * 100) 
+    ? Math.round((completedCount / angles.length) * 100)
     : 0;
 
-  const totalPhotos = sessionPhotos.length;
   const totalRequired = projectTemplates.reduce((sum, t) => 
     sum + t.angles.filter(a => a.isRequired).length, 0
   );
-  const totalCompletedRequired = projectTemplates.reduce((sum, t) => 
-    sum + t.angles.filter(a => 
-      a.isRequired && sessionPhotos.some(p => p.angleId === a.id && p.projectId === t.id)
-    ).length, 0
-  );
+  const totalCompletedRequired = projectTemplates.reduce((sum, t) => {
+    const photos = getSessionPhotosByProject(t.id);
+    return sum + t.angles.filter(a => 
+      a.isRequired && photos.some(p => p.angleId === a.id)
+    ).length;
+  }, 0);
+
+  const hasQualityIssue = (quality: QualityCheck | null) => {
+    if (!quality) return false;
+    return quality.exposure !== 'normal' || quality.angle !== 'normal';
+  };
 
   return (
     <View className={styles.pageContainer}>
@@ -274,29 +315,27 @@ const ShootingPage: React.FC = () => {
           </View>
           <View style={{ flex: 1 }}>
             <Text className={styles.customerName}>{customer.name}</Text>
-            <View style={{ display: 'flex', gap: '16rpx', marginTop: '4rpx' }}>
+            <ScrollView scrollX className={styles.projectTabs}>
               {projectTemplates.map((t, idx) => (
-                <Text
+                <View
                   key={t.id}
-                  style={{
-                    fontSize: '22rpx',
-                    padding: '2rpx 10rpx',
-                    borderRadius: '8rpx',
-                    background: idx === currentProjectIndex 
-                      ? '#1677FF' 
-                      : '#E6F4FF',
-                    color: idx === currentProjectIndex ? '#fff' : '#1677FF'
-                  }}
+                  className={classnames(
+                    styles.projectTab,
+                    idx === currentProjectIndex && styles.active
+                  )}
                   onClick={() => handleProjectChange(idx)}
                 >
-                  {t.name}
-                </Text>
+                  <Text className={styles.projectTabText}>{t.name}</Text>
+                  <View className={styles.projectTabCount}>
+                    {getSessionPhotosByProject(t.id).length}/{t.angles.length}
+                  </View>
+                </View>
               ))}
-            </View>
+            </ScrollView>
           </View>
         </View>
         <Text style={{ fontSize: '24rpx', color: '#86909C' }}>
-          共{totalPhotos}张 / 必拍{totalCompletedRequired}/{totalRequired}
+          共{totalPhotos}张
         </Text>
       </View>
 
@@ -347,7 +386,22 @@ const ShootingPage: React.FC = () => {
         <View className={styles.warningTips}>
           <Text className={styles.warningIcon}>⚠️</Text>
           <Text className={styles.warningText}>
-            照片质量提示：{getQualityText(lastQuality)}，建议确认是否重拍
+            照片质量提示：{getQualityText({
+              id: '',
+              customerId: customer.id,
+              customerName: customer.name,
+              projectId: currentTemplate.id,
+              projectName: currentTemplate.name,
+              angleId: currentAngle?.id || '',
+              angleName: currentAngle?.name || '',
+              photoUrl: '',
+              thumbnailUrl: '',
+              shootTime: '',
+              uploadStatus: 'pending',
+              isOffline: true,
+              exposureLevel: lastQuality.exposure,
+              angleDeviation: lastQuality.angle
+            })}，建议确认是否重拍
           </Text>
         </View>
       )}
@@ -374,12 +428,10 @@ const ShootingPage: React.FC = () => {
           拍摄角度 ({currentAngleIndex + 1}/{angles.length})
         </Text>
         <ScrollView scrollX className={styles.angleGrid}>
-          {angles.map((angle, index) => {
+          {angles.map((angle: PhotoAngle, index: number) => {
             const photo = getPhotoForAngle(angle.id);
-            const hasIssue = photo && (
-              photo.exposureLevel !== 'normal' && photo.exposureLevel !== undefined ||
-              photo.angleDeviation !== 'normal' && photo.angleDeviation !== undefined
-            );
+            const qualityText = getQualityText(photo);
+            const qualityColor = getQualityColor(photo);
             
             return (
               <View
@@ -417,31 +469,24 @@ const ShootingPage: React.FC = () => {
                       <Text>必拍</Text>
                     </View>
                   )}
-                  {hasIssue && (
-                    <View style={{
-                      position: 'absolute',
-                      top: '16rpx',
-                      left: '16rpx',
-                      padding: '4rpx 10rpx',
-                      background: '#F53F3F',
-                      color: '#fff',
-                      fontSize: '20rpx',
-                      borderRadius: '8rpx',
-                      zIndex: 10
-                    }}>
-                      <Text>需注意</Text>
-                    </View>
-                  )}
                 </View>
                 <View className={styles.angleInfo}>
                   <Text className={styles.angleName}>{angle.name}</Text>
-                  <Text className={classnames(
-                    styles.angleStatus,
-                    photo && styles.completed,
-                    angle.isRequired && !photo && styles.required
-                  )}>
-                    {photo ? '✓ 已拍摄' : (angle.isRequired ? '必须拍摄' : '选拍')}
-                  </Text>
+                  {photo ? (
+                    <Text 
+                      className={styles.qualityText}
+                      style={{ color: qualityColor }}
+                    >
+                      {qualityText}
+                    </Text>
+                  ) : (
+                    <Text className={classnames(
+                      styles.angleStatus,
+                      angle.isRequired && styles.required
+                    )}>
+                      {angle.isRequired ? '必须拍摄' : '选拍'}
+                    </Text>
+                  )}
                 </View>
               </View>
             );
@@ -454,7 +499,7 @@ const ShootingPage: React.FC = () => {
           💡 拍摄提示
         </Text>
         <View className={styles.tipsList}>
-          {currentTemplate.tips.slice(0, 3).map((tip, index) => (
+          {currentTemplate.tips.slice(0, 2).map((tip, index) => (
             <View key={index}><Text>{tip}</Text></View>
           ))}
           <View><Text>拍摄距离：{currentTemplate.distance}</Text></View>

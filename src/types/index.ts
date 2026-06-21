@@ -76,7 +76,7 @@ export interface UploadRecord {
   projectName: string;
   photoCount: number;
   uploadTime: string;
-  status: 'success' | 'failed' | 'partial';
+  status: 'success' | 'failed' | 'partial' | 'pending';
   failedCount?: number;
   isOffline?: boolean;
   nurseName: string;
