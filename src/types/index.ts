@@ -74,6 +74,7 @@ export interface UploadRecord {
   customerId: string;
   customerName: string;
   projectName: string;
+  projectIds?: string[];
   photoCount: number;
   uploadTime: string;
   status: 'success' | 'failed' | 'partial' | 'pending';
@@ -81,6 +82,7 @@ export interface UploadRecord {
   isOffline?: boolean;
   nurseName: string;
   remark?: string;
+  photos?: PhotoRecord[];
 }
 
 export type CustomerStatus = Customer['status'];

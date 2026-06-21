@@ -1,0 +1,262 @@
+@use '@/styles/variables.scss' as *;
+
+.pageContainer {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: 60rpx;
+}
+
+.headerCard {
+  margin: $spacing-md $page-padding;
+  padding: $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.customerName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.projectName {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.statusBadge {
+  padding: 6rpx 16rpx;
+  border-radius: $radius-round;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  
+  &.success {
+    background: $color-success-light;
+    color: $color-success;
+  }
+  
+  &.pending {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.failed {
+    background: $color-error-light;
+    color: $color-error;
+  }
+  
+  &.partial {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.offline {
+    background: $color-bg-light;
+    color: $color-text-tertiary;
+    border: 1rpx solid $color-divider;
+  }
+}
+
+.infoRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-md;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+}
+
+.remarkBox {
+  padding: $spacing-md;
+  background: $color-warning-light;
+  border-radius: $radius-sm;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.remarkLabel {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $color-warning;
+}
+
+.remarkText {
+  font-size: $font-size-sm;
+  color: #CC6600;
+  line-height: $line-height-normal;
+}
+
+.statsRow {
+  display: flex;
+  gap: $spacing-md;
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.statCard {
+  flex: 1;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  text-align: center;
+  box-shadow: $shadow-card;
+}
+
+.statNum {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  line-height: 1.2;
+  margin-bottom: 6rpx;
+  
+  &.success { color: $color-success; }
+  &.pending { color: $color-warning; }
+  &.failed { color: $color-error; }
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.actionBar {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-md;
+}
+
+.retryBtn {
+  @include button-reset;
+  width: 100%;
+  height: $button-height;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.section {
+  margin: $spacing-md $page-padding;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.sectionSub {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+}
+
+.photoCard {
+  background: $color-bg-light;
+  border-radius: $radius-md;
+  padding: $spacing-sm;
+  position: relative;
+}
+
+.photoImage {
+  width: 100%;
+  height: 240rpx;
+  border-radius: $radius-sm;
+  background: $color-bg-page;
+  margin-bottom: $spacing-sm;
+}
+
+.photoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.angleName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.qualityText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.photoStatus {
+  display: inline-block;
+  padding: 2rpx 10rpx;
+  border-radius: $radius-xs;
+  font-size: 20rpx;
+  font-weight: $font-weight-medium;
+  margin-top: 4rpx;
+  width: fit-content;
+  
+  &.success {
+    background: $color-success-light;
+    color: $color-success;
+  }
+  
+  &.pending {
+    background: $color-warning-light;
+    color: $color-warning;
+  }
+  
+  &.failed {
+    background: $color-error-light;
+    color: $color-error;
+  }
+}
+
+.retrySingleBtn {
+  @include button-reset;
+  position: absolute;
+  top: $spacing-sm;
+  right: $spacing-sm;
+  height: 52rpx;
+  padding: 0 $spacing-sm;
+  background: $color-error-light;
+  color: $color-error;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  
+  &:active {
+    opacity: 0.85;
+  }
+}

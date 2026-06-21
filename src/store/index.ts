@@ -35,12 +35,15 @@ interface AppState {
   
   isDataLoaded: boolean;
   isInitialSeedDone: boolean;
+  isNetworkOnline: boolean;
   
   setCustomers: (customers: Customer[]) => void;
   setTemplates: (templates: ProjectTemplate[]) => void;
   setSupplementTasks: (tasks: SupplementTask[]) => void;
   setUploadRecords: (records: UploadRecord[]) => void;
   setOfflinePhotos: (photos: PhotoRecord[]) => void;
+  setNetworkStatus: (online: boolean) => void;
+  toggleNetworkStatus: () => void;
   
   selectCustomer: (customerId: string) => void;
   getCurrentCustomer: () => Customer | undefined;
@@ -57,9 +60,12 @@ interface AppState {
   findCustomerByNo: (appointmentNo: string) => Customer | undefined;
   findCustomerById: (id: string) => Customer | undefined;
   
+  getRecordById: (recordId: string) => UploadRecord | undefined;
+  
   addUploadRecord: (record: UploadRecord) => void;
   addOfflinePhotos: (photos: PhotoRecord[]) => void;
   retryUpload: (recordId: string) => void;
+  retrySinglePhoto: (recordId: string, photoId: string) => void;
   retryAllOffline: () => void;
   
   loadInitialData: () => void;
@@ -80,12 +86,22 @@ export const useAppStore = create<AppState>()(
       
       isDataLoaded: false,
       isInitialSeedDone: false,
+      isNetworkOnline: true,
       
       setCustomers: (customers) => set({ customers }),
       setTemplates: (templates) => set({ templates }),
       setSupplementTasks: (tasks) => set({ supplementTasks: tasks }),
       setUploadRecords: (records) => set({ uploadRecords: records }),
       setOfflinePhotos: (photos) => set({ offlinePhotos: photos }),
+      setNetworkStatus: (online) => {
+        set({ isNetworkOnline: online });
+        console.log('[Store] 网络状态:', online ? '在线' : '离线');
+      },
+      toggleNetworkStatus: () => {
+        const current = get().isNetworkOnline;
+        set({ isNetworkOnline: !current });
+        console.log('[Store] 切换网络状态:', !current ? '在线' : '离线');
+      },
       
       selectCustomer: (customerId) => {
         set({ currentCustomerId: customerId, currentProjectIndex: 0 });
@@ -212,7 +228,7 @@ export const useAppStore = create<AppState>()(
       },
       
       submitShootSession: () => {
-        const { currentShootSession, uploadRecords, offlinePhotos } = get();
+        const { currentShootSession, uploadRecords, offlinePhotos, isNetworkOnline } = get();
         if (!currentShootSession) return null;
         
         const allPhotos = Object.values(currentShootSession.projectPhotos).flat();
@@ -220,24 +236,34 @@ export const useAppStore = create<AppState>()(
         
         const customer = get().getCurrentCustomer();
         const projectNames = customer?.projectNames?.join('、') || '多项目';
+        const projectIds = customer?.projectIds || [];
         
-        const isOffline = offlinePhotos.length > 0;
+        const processedPhotos = allPhotos.map(p => ({
+          ...p,
+          uploadStatus: isNetworkOnline ? 'success' as const : 'pending' as const,
+          isOffline: !isNetworkOnline
+        }));
         
         const uploadRecord: UploadRecord = {
           id: 'upload_' + generateId(),
           customerId: currentShootSession.customerId,
           customerName: currentShootSession.customerName,
           projectName: projectNames,
-          photoCount: allPhotos.length,
+          projectIds,
+          photoCount: processedPhotos.length,
           uploadTime: new Date().toISOString(),
-          status: isOffline ? 'pending' : 'success',
-          isOffline: isOffline,
+          status: isNetworkOnline ? 'success' : 'pending',
+          isOffline: !isNetworkOnline,
+          failedCount: 0,
           nurseName: '当前护士',
-          remark: currentShootSession.remark || undefined
+          remark: currentShootSession.remark || undefined,
+          photos: processedPhotos
         };
         
         const newUploadRecords = [uploadRecord, ...uploadRecords];
-        const newOfflinePhotos = isOffline ? [...allPhotos, ...offlinePhotos] : offlinePhotos;
+        const newOfflinePhotos = isNetworkOnline 
+          ? offlinePhotos 
+          : [...processedPhotos, ...offlinePhotos];
         
         set({
           uploadRecords: newUploadRecords,
@@ -248,9 +274,11 @@ export const useAppStore = create<AppState>()(
           }
         });
         
-        console.log('[Store] 提交拍摄会话:', allPhotos.length, '张照片', 
+        console.log('[Store] 提交拍摄会话:', 
+          processedPhotos.length, '张照片',
           '项目数:', Object.keys(currentShootSession.projectPhotos).length,
-          isOffline ? '（离线暂存）' : '（已上传）');
+          isNetworkOnline ? '（网络在线，上传成功）' : '（网络离线，暂存本地）'
+        );
         
         return uploadRecord;
       },
@@ -273,6 +301,11 @@ export const useAppStore = create<AppState>()(
         return customers.find(c => c.id === id);
       },
       
+      getRecordById: (recordId) => {
+        const { uploadRecords } = get();
+        return uploadRecords.find(r => r.id === recordId);
+      },
+      
       addUploadRecord: (record) => {
         const { uploadRecords } = get();
         set({ uploadRecords: [record, ...uploadRecords] });
@@ -286,38 +319,91 @@ export const useAppStore = create<AppState>()(
       retryUpload: (recordId) => {
         const { uploadRecords, offlinePhotos } = get();
         const targetRecord = uploadRecords.find(r => r.id === recordId);
+        if (!targetRecord) return;
+        
+        const updatedPhotos = targetRecord.photos?.map(p => ({
+          ...p,
+          uploadStatus: 'success' as const,
+          isOffline: false
+        })) || [];
+        
         const updatedRecords = uploadRecords.map(r => {
           if (r.id === recordId) {
-            return { ...r, status: 'success' as const, isOffline: false, failedCount: 0 };
+            return { 
+              ...r, 
+              status: 'success' as const, 
+              isOffline: false, 
+              failedCount: 0,
+              photos: updatedPhotos
+            };
           }
           return r;
         });
         
         let newOfflinePhotos = offlinePhotos;
-        if (targetRecord) {
-          newOfflinePhotos = offlinePhotos.filter(
-            p => !(p.customerId === targetRecord.customerId && p.projectName === targetRecord.projectName)
-          );
+        if (targetRecord.photos && targetRecord.photos.length > 0) {
+          const photoIds = new Set(targetRecord.photos.map(p => p.id));
+          newOfflinePhotos = offlinePhotos.filter(p => !photoIds.has(p.id));
         }
         
         set({ uploadRecords: updatedRecords, offlinePhotos: newOfflinePhotos });
-        console.log('[Store] 重试上传:', recordId);
+        console.log('[Store] 重试上传记录:', recordId, targetRecord.customerName);
+      },
+      
+      retrySinglePhoto: (recordId, photoId) => {
+        const { uploadRecords, offlinePhotos } = get();
+        const targetRecord = uploadRecords.find(r => r.id === recordId);
+        if (!targetRecord || !targetRecord.photos) return;
+        
+        const updatedPhotos = targetRecord.photos.map(p => {
+          if (p.id === photoId) {
+            return { ...p, uploadStatus: 'success' as const, isOffline: false };
+          }
+          return p;
+        });
+        
+        const allSuccess = updatedPhotos.every(p => p.uploadStatus === 'success');
+        const failedCount = updatedPhotos.filter(p => p.uploadStatus === 'failed').length;
+        
+        const updatedRecords = uploadRecords.map(r => {
+          if (r.id === recordId) {
+            return {
+              ...r,
+              photos: updatedPhotos,
+              status: allSuccess 
+                ? (r.isOffline ? 'success' : 'success') as const
+                : (failedCount > 0 ? (failedCount === updatedPhotos.length ? 'failed' as const : 'partial' as const) : r.status),
+              isOffline: allSuccess ? false : r.isOffline,
+              failedCount: allSuccess ? 0 : failedCount
+            };
+          }
+          return r;
+        });
+        
+        const newOfflinePhotos = offlinePhotos.filter(p => p.id !== photoId);
+        
+        set({ uploadRecords: updatedRecords, offlinePhotos: newOfflinePhotos });
+        console.log('[Store] 重试单张照片:', recordId, photoId);
       },
       
       retryAllOffline: () => {
         const { uploadRecords } = get();
         const updatedRecords = uploadRecords.map(r => {
-          if (r.isOffline) {
-            return { ...r, status: 'success' as const, isOffline: false };
-          }
-          if (r.status === 'failed') {
-            return { ...r, status: 'success' as const, failedCount: 0 };
-          }
-          if (r.status === 'partial') {
-            return { ...r, status: 'success' as const, failedCount: 0 };
-          }
-          return r;
+          const updatedPhotos = r.photos?.map(p => ({
+            ...p,
+            uploadStatus: 'success' as const,
+            isOffline: false
+          }));
+          
+          return {
+            ...r,
+            status: 'success' as const,
+            isOffline: false,
+            failedCount: 0,
+            photos: updatedPhotos
+          };
         });
+        
         set({ uploadRecords: updatedRecords, offlinePhotos: [] });
         console.log('[Store] 全部重试离线照片完成');
       },
@@ -366,7 +452,8 @@ export const useAppStore = create<AppState>()(
         currentShootSession: state.currentShootSession,
         supplementTasks: state.supplementTasks,
         isDataLoaded: state.isDataLoaded,
-        isInitialSeedDone: state.isInitialSeedDone
+        isInitialSeedDone: state.isInitialSeedDone,
+        isNetworkOnline: state.isNetworkOnline
       })
     }
   )

@@ -6,7 +6,8 @@ export default defineAppConfig({
     'pages/supplement/index',
     'pages/records/index',
     'pages/shooting/index',
-    'pages/template-detail/index'
+    'pages/template-detail/index',
+    'pages/record-detail/index'
   ],
   window: {
     backgroundTextStyle: 'light',

@@ -94,11 +94,8 @@ const RecordsPage: React.FC = () => {
 
   const handleViewDetail = useCallback((record: UploadRecord) => {
     console.log('[Records] 查看详情:', record.customerName);
-    Taro.showModal({
-      title: record.projectName,
-      content: `客户：${record.customerName}\n照片数量：${record.photoCount}张\n上传时间：${formatDateTime(record.uploadTime)}\n护士：${record.nurseName}${record.remark ? '\n备注：' + record.remark : ''}`,
-      showCancel: false,
-      confirmText: '知道了'
+    Taro.navigateTo({
+      url: '/pages/record-detail?recordId=' + record.id
     });
   }, []);
 

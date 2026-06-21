@@ -126,55 +126,135 @@ export const mockUploadRecords: UploadRecord[] = [
     customerId: 'c004',
     customerName: '陈梦瑶',
     projectName: '鼻部综合 + 眼部综合',
+    projectIds: ['p001', 'p002'],
     photoCount: 12,
     uploadTime: '2026-06-22 10:30',
     status: 'success',
-    nurseName: '李护士'
+    nurseName: '李护士',
+    photos: mockPhotoRecords.filter(p => p.customerId === 'c004').map(p => ({ ...p, uploadStatus: 'success' as const, isOffline: false }))
   },
   {
     id: 'u002',
     customerId: 'c002',
     customerName: '王佳怡',
     projectName: '眼部综合',
+    projectIds: ['p002'],
     photoCount: 6,
     uploadTime: '2026-06-22 10:00',
     status: 'pending',
     nurseName: '王护士',
-    isOffline: true
+    isOffline: true,
+    photos: mockPhotoRecords.filter(p => p.customerId === 'c002').map(p => ({ ...p, uploadStatus: 'pending' as const, isOffline: true }))
   },
   {
     id: 'u003',
     customerId: 'c007',
     customerName: '周子萱',
     projectName: '鼻部综合 + 自体脂肪填充',
+    projectIds: ['p001', 'p003'],
     photoCount: 10,
     uploadTime: '2026-06-21 16:30',
     status: 'partial',
     failedCount: 2,
     nurseName: '张护士',
-    remark: '2张照片曝光不足，需重拍'
+    remark: '2张照片曝光不足，需重拍',
+    photos: Array.from({ length: 8 }).map((_, i) => ({
+      id: 'ph_u003_' + i,
+      customerId: 'c007',
+      customerName: '周子萱',
+      projectId: 'p001',
+      projectName: '鼻部综合',
+      angleId: 'a001',
+      angleName: i < 5 ? `角度${i + 1}` : `面部${i + 1}`,
+      photoUrl: 'https://picsum.photos/id/' + (70 + i) + '/600/800',
+      thumbnailUrl: 'https://picsum.photos/id/' + (70 + i) + '/200/267',
+      shootTime: '2026-06-21 16:30',
+      uploadStatus: i < 8 ? 'success' as const : 'failed' as const,
+      isOffline: false
+    })).concat([
+      {
+        id: 'ph_u003_f1',
+        customerId: 'c007',
+        customerName: '周子萱',
+        projectId: 'p001',
+        projectName: '鼻部综合',
+        angleId: 'a006',
+        angleName: '仰头位',
+        photoUrl: 'https://picsum.photos/id/80/600/800',
+        thumbnailUrl: 'https://picsum.photos/id/80/200/267',
+        shootTime: '2026-06-21 16:31',
+        uploadStatus: 'failed' as const,
+        isOffline: false,
+        exposureLevel: 'dark'
+      },
+      {
+        id: 'ph_u003_f2',
+        customerId: 'c007',
+        customerName: '周子萱',
+        projectId: 'p003',
+        projectName: '自体脂肪填充',
+        angleId: 'a205',
+        angleName: '右45度',
+        photoUrl: 'https://picsum.photos/id/81/600/800',
+        thumbnailUrl: 'https://picsum.photos/id/81/200/267',
+        shootTime: '2026-06-21 16:31',
+        uploadStatus: 'failed' as const,
+        isOffline: false,
+        angleDeviation: 'serious'
+      }
+    ])
   },
   {
     id: 'u004',
     customerId: 'c001',
     customerName: '张美丽',
     projectName: '鼻部综合',
+    projectIds: ['p001'],
     photoCount: 6,
     uploadTime: '2026-06-21 15:00',
     status: 'success',
-    nurseName: '李护士'
+    nurseName: '李护士',
+    photos: Array.from({ length: 6 }).map((_, i) => ({
+      id: 'ph_u004_' + i,
+      customerId: 'c001',
+      customerName: '张美丽',
+      projectId: 'p001',
+      projectName: '鼻部综合',
+      angleId: 'a00' + (i + 1),
+      angleName: ['正面位', '左侧位', '右侧位', '左斜位', '右斜位', '仰头位'][i] || '角度' + (i + 1),
+      photoUrl: 'https://picsum.photos/id/' + (82 + i) + '/600/800',
+      thumbnailUrl: 'https://picsum.photos/id/' + (82 + i) + '/200/267',
+      shootTime: '2026-06-21 15:00',
+      uploadStatus: 'success' as const,
+      isOffline: false
+    }))
   },
   {
     id: 'u005',
     customerId: 'c003',
     customerName: '刘思琪',
     projectName: '自体脂肪填充',
+    projectIds: ['p003'],
     photoCount: 5,
     uploadTime: '2026-06-21 14:00',
     status: 'failed',
     failedCount: 5,
     nurseName: '王护士',
-    remark: '网络异常，全部上传失败'
+    remark: '网络异常，全部上传失败',
+    photos: Array.from({ length: 5 }).map((_, i) => ({
+      id: 'ph_u005_' + i,
+      customerId: 'c003',
+      customerName: '刘思琪',
+      projectId: 'p003',
+      projectName: '自体脂肪填充',
+      angleId: 'a20' + (i + 1),
+      angleName: ['正面位', '左侧位', '右侧位', '左45度', '右45度'][i] || '角度' + (i + 1),
+      photoUrl: 'https://picsum.photos/id/' + (88 + i) + '/600/800',
+      thumbnailUrl: 'https://picsum.photos/id/' + (88 + i) + '/200/267',
+      shootTime: '2026-06-21 14:00',
+      uploadStatus: 'failed' as const,
+      isOffline: false
+    }))
   }
 ];
 
